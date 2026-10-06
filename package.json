@@ -2,6 +2,7 @@
   "name": "smartpakcoy_backend",
   "version": "1.0.0",
   "description": "Backend IoT Monitoring Smart Pakcoy Greenhouse",
+  "type": "module",
   "main": "src/main.js",
   "scripts": {
     "dev": "node --watch src/main.js",
@@ -10,8 +11,12 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "firebase": "^12.19.0"
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.5",
+    "express": "^5.2.1",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^14.5.0",
+    "socket.io": "^4.8.4"
   }
 }
