@@ -1,14 +1,6 @@
-import {
-  getLatestReading,
-  getReadingHistory,
-  listenLatestReading
-} from "../repositories/db_sensor.js";
-
+import {getLatestReading,getReadingHistory,listenLatestReading,getHistoryByRange } from "../repositories/db_sensor.js";
+import {toNumber,normalizeTimestamp,calculateSensorStats, aggregateHistoryByMinute } from "../utils/sensor_util.js";
 import { SensorReading } from "../models/sensor.js";
-import {
-  toNumber,
-  normalizeTimestamp
-} from "../utils/sensor_util.js";
 
 function mapReading(deviceId, raw) {
   if (!raw) {
@@ -66,4 +58,80 @@ export function subscribeLatestSensor(
 
     callback(reading);
   });
+}
+
+export async function getSensorAnalytics(
+  deviceId,
+  { startTimestamp, endTimestamp, period = "24h" } = {}
+) {
+  let start = startTimestamp;
+  let end = endTimestamp;
+
+  if (start == null || end == null) {
+    const durations = {
+      "24h": 24 * 60 * 60 * 1000,
+      "7d": 7 * 24 * 60 * 60 * 1000,
+      "30d": 30 * 24 * 60 * 60 * 1000
+    };
+
+    const duration = durations[period];
+
+    if (!duration) {
+      throw new Error("Invalid analytics period");
+    }
+
+    end = Date.now();
+    start = end - duration;
+  }
+
+  if (!Number.isFinite(Number(start)) || !Number.isFinite(Number(end))) {
+    throw new Error("Invalid analytics timestamp range");
+  }
+
+  if (end <= start) {
+    throw new Error("End timestamp must be greater than start timestamp");
+  }
+
+  if (end - start > 24 * 60 * 60 * 1000) {
+    throw new Error("Analytics range cannot exceed 24 hours");
+  }
+
+  const rawHistory = await getHistoryByRange(
+    deviceId,
+    start,
+    end
+  );
+
+  const normalizedHistory = rawHistory.map((item) => ({
+    id: item.id,
+    ...mapReading(deviceId, item)
+  }));
+
+  const statistics = {
+    temperature: calculateSensorStats(
+      normalizedHistory,
+      "temperature"
+    ),
+    humidity: calculateSensorStats(
+      normalizedHistory,
+      "humidity"
+    ),
+    lightIntensity: calculateSensorStats(
+      normalizedHistory,
+      "lightIntensity"
+    )
+  };
+
+  const history = aggregateHistoryByMinute(
+    normalizedHistory
+  );
+
+  return {
+    period,
+    startTimestamp: new Date(start).toISOString(),
+    endTimestamp: new Date(end).toISOString(),
+    count: normalizedHistory.length,
+    history,
+    statistics
+  };
 }

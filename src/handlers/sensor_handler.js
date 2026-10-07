@@ -1,7 +1,5 @@
-import {
-  getLatestSensor,
-  getSensorHistory
-} from "../services/sensor_service.js";
+import {getLatestSensor,getSensorHistory} from "../services/sensor_service.js";
+import {getSensorAnalytics } from "../services/sensor_service.js";
 
 export async function getLatestSensorHandler(req, res) {
   try {
@@ -60,6 +58,43 @@ export async function getSensorHistoryHandler(req, res) {
     return res.status(500).json({
       success: false,
       message: "Failed to retrieve sensor history"
+    });
+  }
+}
+
+export async function getSensorAnalyticsHandler(req, res) {
+  try {
+    const { deviceId } = req.params;
+    const { start, end, period } = req.query;
+
+    const hasCustomRange = start !== undefined || end !== undefined;
+
+    if (hasCustomRange && (start === undefined || end === undefined)) {
+      return res.status(400).json({
+        success: false,
+        message: "Both start and end timestamps are required."
+      });
+    }
+
+    const startTimestamp = hasCustomRange ? Number(start) : undefined;
+    const endTimestamp = hasCustomRange ? Number(end) : undefined;
+
+    const data = await getSensorAnalytics(deviceId, {
+      startTimestamp,
+      endTimestamp,
+      period: period || "24h"
+    });
+
+    return res.json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    console.error("GET SENSOR ANALYTICS ERROR:", error);
+
+    return res.status(400).json({
+      success: false,
+      message: error.message
     });
   }
 }

@@ -2,7 +2,8 @@ import { Router } from "express";
 
 import {
   getLatestSensorHandler,
-  getSensorHistoryHandler
+  getSensorHistoryHandler,
+  getSensorAnalyticsHandler
 } from "../handlers/sensor_handler.js";
 
 const router = Router();
@@ -15,6 +16,11 @@ router.get(
 router.get(
   "/:deviceId/history",
   getSensorHistoryHandler
+);
+
+router.get(
+  "/:deviceId/analytics",
+  getSensorAnalyticsHandler
 );
 
 export default router;

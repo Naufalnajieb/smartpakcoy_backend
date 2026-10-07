@@ -51,3 +51,20 @@ export function listenLatestReading(deviceId, callback) {
     reference.off("value", listener);
   };
 }
+
+export async function getHistoryByRange(deviceId, startTimestamp, endTimestamp) {
+  const snapshot = await getDeviceReference(deviceId)
+    .child("history")
+    .orderByChild("timestamp")
+    .startAt(startTimestamp)
+    .endAt(endTimestamp)
+    .once("value");
+
+  if (!snapshot.exists()) return [];
+
+  const data = snapshot.val();
+
+  return Object.entries(data)
+    .map(([id, value]) => ({ id, ...value }))
+    .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+}
