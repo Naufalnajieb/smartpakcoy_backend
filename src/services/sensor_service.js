@@ -1,6 +1,16 @@
-import {getLatestReading,getReadingHistory,listenLatestReading,getHistoryByRange } from "../repositories/db_sensor.js";
-import {toNumber,normalizeTimestamp,calculateSensorStats, aggregateHistoryByMinute, calculateDeviceStatus } from "../utils/sensor_util.js";
-import { SensorReading } from "../models/sensor.js";
+import {
+  getLatestReading,
+  getReadingHistory,
+  listenLatestReading,
+  getHistoryByRange } from "../repositories/db_sensor.js";
+import {
+  toNumber,
+  normalizeTimestamp,
+  calculateSensorStats,
+  aggregateHistoryByMinute, 
+  calculateDeviceStatus, 
+  detectAlerts } from "../utils/sensor_util.js";
+import {SensorReading } from "../models/sensor.js";
 
 function mapReading(deviceId, raw) {
   if (!raw) {
@@ -144,5 +154,57 @@ export async function getSensorAnalytics(
     count: normalizedHistory.length,
     history,
     statistics
+  };
+}
+
+export async function getSensorAlerts(
+  deviceId,
+  { startTimestamp, endTimestamp } = {}
+) {
+  let start = startTimestamp;
+  let end = endTimestamp;
+
+  if (start == null || end == null) {
+    end = Date.now();
+    start = end - 24 * 60 * 60 * 1000;
+  }
+
+  if (
+    !Number.isFinite(Number(start)) ||
+    !Number.isFinite(Number(end))
+  ) {
+    throw new Error("Invalid alert timestamp range");
+  }
+
+  if (end <= start) {
+    throw new Error("End timestamp must be greater than start timestamp");
+  }
+
+  if (end - start > 24 * 60 * 60 * 1000) {
+    throw new Error("Alert range cannot exceed 24 hours");
+  }
+
+  const rawHistory = await getHistoryByRange(
+    deviceId,
+    start,
+    end
+  );
+
+  const normalizedHistory = rawHistory.map((item) => ({
+    id: item.id,
+    ...mapReading(deviceId, item)
+  }));
+
+  const minuteHistory = aggregateHistoryByMinute(
+    normalizedHistory
+  );
+
+  const alerts = detectAlerts(minuteHistory);
+
+  return {
+    startTimestamp: new Date(start).toISOString(),
+    endTimestamp: new Date(end).toISOString(),
+    count: alerts.length,
+    alerts
   };
 }

@@ -1,10 +1,8 @@
-import {getLatestSensor,getSensorHistory} from "../services/sensor_service.js";
-import {getSensorAnalytics } from "../services/sensor_service.js";
+import {getLatestSensor,getSensorHistory, getSensorAnalytics, getSensorAlerts} from "../services/sensor_service.js";
 
 export async function getLatestSensorHandler(req, res) {
   try {
     const { deviceId } = req.params;
-
     const data = await getLatestSensor(deviceId);
 
     if (!data) {
@@ -91,6 +89,43 @@ export async function getSensorAnalyticsHandler(req, res) {
     });
   } catch (error) {
     console.error("GET SENSOR ANALYTICS ERROR:", error);
+
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+}
+
+export async function getSensorAlertsHandler(req, res) {
+  try {
+    const { deviceId } = req.params;
+    const { start, end } = req.query;
+
+    const hasCustomRange =
+      start !== undefined || end !== undefined;
+
+    if (
+      hasCustomRange &&
+      (start === undefined || end === undefined)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Both start and end timestamps are required."
+      });
+    }
+
+    const data = await getSensorAlerts(deviceId, {
+      startTimestamp: hasCustomRange ? Number(start) : undefined,
+      endTimestamp: hasCustomRange ? Number(end) : undefined
+    });
+
+    return res.json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    console.error("GET SENSOR ALERTS ERROR:", error);
 
     return res.status(400).json({
       success: false,

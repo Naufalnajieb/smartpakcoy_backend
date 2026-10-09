@@ -176,3 +176,107 @@ export function calculateDeviceStatus({
       : "no-data"
   };
 }
+
+
+const ALERT_RULES = {
+  temperature: {
+    enabled: true,
+    label: "Suhu",
+    unit: "°C",
+    min: 20,
+    max: 25,
+    criticalMin: 15,
+    criticalMax: 32
+  },
+  humidity: {
+    enabled: true,
+    label: "Kelembapan",
+    unit: "%",
+    min: 60,
+    max: 80,
+    criticalMin: null,
+    criticalMax: null
+  },
+  lightIntensity: {
+    enabled: false,
+    label: "Intensitas Cahaya",
+    unit: "lux",
+    min: null,
+    max: null,
+    criticalMin: null,
+    criticalMax: null
+  }
+};
+
+function evaluateSensorAlert(sensorType, value) {
+  const rule = ALERT_RULES[sensorType];
+
+  if (!rule?.enabled || !Number.isFinite(Number(value))) {
+    return null;
+  }
+
+  const numericValue = Number(value);
+
+  if (rule.min !== null && numericValue < rule.min) {
+    return {
+      sensorType,
+      message: `${rule.label} Rendah`,
+      value: numericValue,
+      unit: rule.unit,
+      severity:
+        rule.criticalMin !== null && numericValue < rule.criticalMin
+          ? "critical"
+          : "warning"
+    };
+  }
+
+  if (rule.max !== null && numericValue > rule.max) {
+    return {
+      sensorType,
+      message: `${rule.label} Tinggi`,
+      value: numericValue,
+      unit: rule.unit,
+      severity:
+        rule.criticalMax !== null && numericValue > rule.criticalMax
+          ? "critical"
+          : "warning"
+    };
+  }
+
+  return null;
+}
+
+export function detectAlerts(history) {
+  const alerts = [];
+  const previousSeverity = {};
+
+  for (const reading of history) {
+    const sensors = [
+      ["temperature", reading.temperature],
+      ["humidity", reading.humidity],
+      ["lightIntensity", reading.lightIntensity]
+    ];
+
+    for (const [sensorType, value] of sensors) {
+      const result = evaluateSensorAlert(sensorType, value);
+      const currentSeverity = result?.severity || "normal";
+
+      if (
+        result &&
+        previousSeverity[sensorType] !== currentSeverity
+      ) {
+        alerts.push({
+          id: `${reading.timestamp}-${sensorType}`,
+          timestamp: reading.timestamp,
+          ...result
+        });
+      }
+
+      previousSeverity[sensorType] = currentSeverity;
+    }
+  }
+
+  return alerts.sort(
+    (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+  );
+}
