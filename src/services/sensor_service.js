@@ -1,5 +1,5 @@
 import {getLatestReading,getReadingHistory,listenLatestReading,getHistoryByRange } from "../repositories/db_sensor.js";
-import {toNumber,normalizeTimestamp,calculateSensorStats, aggregateHistoryByMinute } from "../utils/sensor_util.js";
+import {toNumber,normalizeTimestamp,calculateSensorStats, aggregateHistoryByMinute, calculateDeviceStatus } from "../utils/sensor_util.js";
 import { SensorReading } from "../models/sensor.js";
 
 function mapReading(deviceId, raw) {
@@ -33,8 +33,14 @@ function mapReading(deviceId, raw) {
 
 export async function getLatestSensor(deviceId) {
   const raw = await getLatestReading(deviceId);
+  const reading = mapReading(deviceId, raw);
 
-  return mapReading(deviceId, raw);
+  if (!reading) return null;
+
+  return {
+    ...reading,
+    deviceStatus: calculateDeviceStatus(reading)
+  };
 }
 
 export async function getSensorHistory(deviceId, limit) {
@@ -49,14 +55,19 @@ export async function getSensorHistory(deviceId, limit) {
   }));
 }
 
-export function subscribeLatestSensor(
-  deviceId,
-  callback
-) {
+export function subscribeLatestSensor(deviceId, callback) {
   return listenLatestReading(deviceId, (raw) => {
     const reading = mapReading(deviceId, raw);
 
-    callback(reading);
+    if (!reading) {
+      callback(null);
+      return;
+    }
+
+    callback({
+      ...reading,
+      deviceStatus: calculateDeviceStatus(reading)
+    });
   });
 }
 

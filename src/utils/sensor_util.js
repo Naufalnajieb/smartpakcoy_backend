@@ -134,3 +134,45 @@ export function aggregateHistoryByMinute(history) {
       lightIntensity: average(item.lightIntensity)
     }));
 }
+
+const DEVICE_ACTIVE_MS = 15 * 1000;
+const DEVICE_DELAYED_MS = 60 * 1000;
+
+export function getTelemetryStatus(timestamp) {
+  const timestampMs = new Date(timestamp).getTime();
+
+  if (!Number.isFinite(timestampMs)) {
+    return "no-data";
+  }
+
+  const age = Date.now() - timestampMs;
+
+  if (age <= DEVICE_ACTIVE_MS) {
+    return "active";
+  }
+
+  if (age <= DEVICE_DELAYED_MS) {
+    return "delayed";
+  }
+
+  return "no-data";
+}
+
+export function calculateDeviceStatus({
+  timestamp,
+  temperature,
+  humidity,
+  lightIntensity
+}) {
+  const telemetryStatus = getTelemetryStatus(timestamp);
+
+  return {
+    esp32: telemetryStatus,
+    dht11: Number.isFinite(Number(temperature))
+      ? telemetryStatus
+      : "no-data",
+    bh1750: Number.isFinite(Number(lightIntensity))
+      ? telemetryStatus
+      : "no-data"
+  };
+}
