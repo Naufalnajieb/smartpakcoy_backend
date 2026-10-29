@@ -1,4 +1,10 @@
-import {getLatestSensor,getSensorHistory, getSensorAnalytics, getSensorAlerts} from "../services/sensor_service.js";
+import {
+  getLatestSensor,
+  getSensorHistory,
+  getSensorAnalytics,
+  getSensorAlerts,
+  getSensorExportData
+} from "../services/sensor_service.js";
 
 export async function getLatestSensorHandler(req, res) {
   try {
@@ -130,6 +136,29 @@ export async function getSensorAlertsHandler(req, res) {
     return res.status(400).json({
       success: false,
       message: error.message
+    });
+  }
+}
+
+export async function getSensorExportDataHandler(req, res) {
+  try {
+    const { deviceId } = req.params;
+
+    const data = await getSensorExportData(deviceId);
+
+    return res.json({
+      success: true,
+      data,
+      meta: {
+        count: data.length
+      }
+    });
+  } catch (error) {
+    console.error("GET SENSOR EXPORT DATA ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve sensor export data"
     });
   }
 }

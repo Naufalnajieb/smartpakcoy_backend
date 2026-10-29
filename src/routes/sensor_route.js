@@ -4,7 +4,8 @@ import {
   getLatestSensorHandler,
   getSensorHistoryHandler,
   getSensorAnalyticsHandler,
-  getSensorAlertsHandler
+  getSensorAlertsHandler,
+  getSensorExportDataHandler
 } from "../handlers/sensor_handler.js";
 
 const router = Router();
@@ -27,6 +28,11 @@ router.get(
 router.get(
   "/:deviceId/alerts",
   getSensorAlertsHandler
+);
+
+router.get(
+  "/:deviceId/export",
+  getSensorExportDataHandler
 );
 
 export default router;

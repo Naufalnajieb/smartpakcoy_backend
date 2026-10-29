@@ -68,3 +68,20 @@ export async function getHistoryByRange(deviceId, startTimestamp, endTimestamp) 
     .map(([id, value]) => ({ id, ...value }))
     .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
 }
+
+export async function getAllReadingHistory(deviceId) {
+  const snapshot = await getDeviceReference(deviceId)
+    .child("history")
+    .once("value");
+
+  if (!snapshot.exists()) {
+    return [];
+  }
+
+  const data = snapshot.val();
+
+  return Object.entries(data).map(([id, value]) => ({
+    id,
+    ...(value || {})
+  }));
+}

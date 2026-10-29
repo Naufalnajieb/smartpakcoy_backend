@@ -1,8 +1,10 @@
 import {
   getLatestReading,
   getReadingHistory,
+  getAllReadingHistory,
   listenLatestReading,
-  getHistoryByRange } from "../repositories/db_sensor.js";
+  getHistoryByRange
+} from "../repositories/db_sensor.js";
 import {
   toNumber,
   normalizeTimestamp,
@@ -64,6 +66,31 @@ export async function getSensorHistory(deviceId, limit) {
     ...mapReading(deviceId, item)
   }));
 }
+
+export async function getSensorExportData(deviceId) {
+  const rawHistory = await getAllReadingHistory(deviceId);
+
+  return rawHistory
+    .map((item) => {
+      const reading = mapReading(deviceId, item);
+
+      if (!reading) {
+        return null;
+      }
+
+      return {
+        id: item.id,
+        ...reading
+      };
+    })
+    .filter((item) => item !== null)
+    .sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() -
+        new Date(b.timestamp).getTime()
+    );
+}
+
 
 export function subscribeLatestSensor(deviceId, callback) {
   return listenLatestReading(deviceId, (raw) => {
